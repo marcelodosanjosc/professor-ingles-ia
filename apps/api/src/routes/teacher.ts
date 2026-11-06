@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
+import { env } from '../config/env';
 import {
   isTeacherId,
   teacherById,
@@ -19,8 +21,21 @@ export const teacherRouter = Router();
 
 teacherRouter.use(requireAuth);
 
+// As ações POST podem chamar a API paga da Anthropic: limite por usuário.
+const teacherActionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anon',
+  skip: () => env.NODE_ENV === 'test',
+  message: {
+    error: { code: 'TOO_MANY_REQUESTS', message: 'Muitas solicitações ao professor. Aguarde um minuto.' },
+  },
+});
+
 const teacherActionBodySchema = z.object({
-  action: z.string().min(1, 'Ação é obrigatória'),
+  action: z.string().min(1, 'Ação é obrigatória').max(40),
   payload: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -106,9 +121,9 @@ teacherRouter.get('/:id', async (req, res, next) => {
   }
 });
 
-teacherRouter.post('/:id', async (req, res, next) => {
+teacherRouter.post('/:id', teacherActionLimiter, async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id ?? '');
     if (!id || !isTeacherId(id)) {
       throw new HttpError(404, 'TEACHER_NOT_FOUND', `Professor com id "${id}" não encontrado`);
     }

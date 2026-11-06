@@ -186,12 +186,13 @@ export function DirectThinkingPage() {
     async function loadData() {
       setIsLoading(true);
       try {
-        const res = await apiFetch<{ data: DirectThinkingData }>('/api/teacher/thinking', {
+        const res = await apiFetch<any>('/api/teacher/thinking', {
           method: 'POST',
           body: JSON.stringify({ action: 'load' }),
         });
-        if (isMounted && res?.data?.stage1Objects?.length) {
-          setData(res.data);
+        const resolved = (res as any)?.data ?? res;
+        if (isMounted && resolved?.stage1Objects?.length) {
+          setData(resolved);
         }
       } catch {
         // Fallback robusto
@@ -352,11 +353,11 @@ export function DirectThinkingPage() {
           </div>
 
           {/* Abas */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 overflow-x-auto">
+          <div className="flex flex-wrap gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 w-full md:w-auto max-w-full">
             <button
               type="button"
               onClick={() => setActiveTab('stages')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'stages'
                   ? 'bg-cyan-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -367,7 +368,7 @@ export function DirectThinkingPage() {
             <button
               type="button"
               onClick={() => setActiveTab('narration')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'narration'
                   ? 'bg-cyan-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -378,7 +379,7 @@ export function DirectThinkingPage() {
             <button
               type="button"
               onClick={() => setActiveTab('detector')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'detector'
                   ? 'bg-cyan-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -389,7 +390,7 @@ export function DirectThinkingPage() {
             <button
               type="button"
               onClick={() => setActiveTab('chunks')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'chunks'
                   ? 'bg-cyan-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -400,7 +401,7 @@ export function DirectThinkingPage() {
             <button
               type="button"
               onClick={() => setActiveTab('test')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'test'
                   ? 'bg-cyan-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -416,11 +417,11 @@ export function DirectThinkingPage() {
            ========================================================================= */}
         {activeTab === 'stages' && (
           <div className="space-y-6">
-            <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 max-w-lg mx-auto">
+            <div className="flex flex-col sm:flex-row gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 w-full max-w-xl mx-auto">
               <button
                 type="button"
                 onClick={() => setActiveStageNumber(1)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`flex-1 py-2 px-2.5 min-h-[36px] rounded-xl text-xs font-bold transition-all ${
                   activeStageNumber === 1
                     ? 'bg-cyan-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-white'
@@ -431,7 +432,7 @@ export function DirectThinkingPage() {
               <button
                 type="button"
                 onClick={() => setActiveStageNumber(2)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`flex-1 py-2 px-2.5 min-h-[36px] rounded-xl text-xs font-bold transition-all ${
                   activeStageNumber === 2
                     ? 'bg-cyan-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-white'
@@ -442,7 +443,7 @@ export function DirectThinkingPage() {
               <button
                 type="button"
                 onClick={() => setActiveStageNumber(3)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`flex-1 py-2 px-2.5 min-h-[36px] rounded-xl text-xs font-bold transition-all ${
                   activeStageNumber === 3
                     ? 'bg-cyan-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-white'
@@ -496,7 +497,7 @@ export function DirectThinkingPage() {
                           <label htmlFor="stage1-term-input" className="text-xs font-semibold text-slate-300">
                             Qual é o nome em inglês?
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2 w-full">
                             <input
                               id="stage1-term-input"
                               type="text"
@@ -509,12 +510,12 @@ export function DirectThinkingPage() {
                                 if (e.key === 'Enter') handleCheckStage1();
                               }}
                               placeholder="Type in English..."
-                              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                              className="min-w-0 flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
                             />
                             <Button
                               variant="primary"
                               onClick={handleCheckStage1}
-                              className="bg-cyan-600 hover:bg-cyan-500"
+                              className="bg-cyan-600 hover:bg-cyan-500 shrink-0 w-full sm:w-auto"
                             >
                               Verificar
                             </Button>
@@ -522,7 +523,7 @@ export function DirectThinkingPage() {
 
                           {stage1Feedback !== null && (
                             <div
-                              className={`p-3 rounded-xl border flex items-center justify-between text-xs animate-fadeIn ${
+                              className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs animate-fadeIn ${
                                 stage1Feedback
                                   ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
                                   : 'bg-rose-950/60 border-rose-800 text-rose-300'
@@ -536,7 +537,7 @@ export function DirectThinkingPage() {
                               <button
                                 type="button"
                                 onClick={() => speak(item.expectedTerms[0] ?? '', 'en-US', 1.0)}
-                                className="text-white hover:underline flex items-center gap-1"
+                                className="text-white hover:underline py-1.5 px-2.5 min-h-[28px] inline-flex items-center gap-1 cursor-pointer rounded-lg hover:bg-slate-800/40 self-start sm:self-auto shrink-0"
                               >
                                 <Volume2 className="w-3.5 h-3.5" /> Ouvir
                               </button>
@@ -889,21 +890,21 @@ export function DirectThinkingPage() {
                   <label htmlFor="trap-text-input" className="text-xs font-semibold text-slate-300">
                     Digite qualquer frase em inglês para analisar:
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full">
                     <input
                       id="trap-text-input"
                       type="text"
                       value={customTrapText}
                       onChange={(e) => setCustomTrapText(e.target.value)}
                       placeholder="Ex: I am agree with your opinion..."
-                      className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      className="min-w-0 flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-base focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     />
                     <Button
                       variant="primary"
                       onClick={() => void handleDetectTrap()}
                       loading={isCheckingTrap}
                       disabled={!customTrapText.trim()}
-                      className="bg-cyan-600 hover:bg-cyan-500"
+                      className="bg-cyan-600 hover:bg-cyan-500 shrink-0 w-full sm:w-auto"
                     >
                       Analisar Frase
                     </Button>
@@ -920,7 +921,7 @@ export function DirectThinkingPage() {
                       <button
                         type="button"
                         onClick={() => speak(trapResult.naturalForm, 'en-US', 1.0)}
-                        className="text-xs text-cyan-300 hover:underline flex items-center gap-1"
+                        className="text-xs text-cyan-300 hover:underline py-1.5 px-2.5 min-h-[28px] inline-flex items-center gap-1 cursor-pointer rounded-lg hover:bg-slate-800/40"
                       >
                         <Volume2 className="w-3.5 h-3.5" /> Ouvir forma natural
                       </button>

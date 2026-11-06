@@ -569,7 +569,7 @@ export function ArchitectPage() {
                             variant="secondary"
                             size="sm"
                             rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                            className="w-full text-xs"
+                            className="w-full text-xs py-1.5 px-2.5 min-h-[32px] inline-flex items-center justify-center"
                           >
                             Abrir Professor ({block.teacherSlug})
                           </Button>

@@ -253,12 +253,13 @@ export function ImmersionPage() {
     async function loadData() {
       setIsLoading(true);
       try {
-        const res = await apiFetch<{ data: ImmersionPlanData }>('/api/teacher/immersion', {
+        const res = await apiFetch<any>('/api/teacher/immersion', {
           method: 'POST',
           body: JSON.stringify({ action: 'load' }),
         });
-        if (isMounted && res?.data?.routineBlocks?.length) {
-          setData(res.data);
+        const resolved = (res as any)?.data ?? res;
+        if (isMounted && resolved?.routineBlocks?.length) {
+          setData(resolved);
         }
       } catch {
         // Fallback robusto
@@ -409,11 +410,11 @@ export function ImmersionPage() {
           </div>
 
           {/* Abas */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 overflow-x-auto">
+          <div className="flex flex-wrap gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 w-full md:w-auto max-w-full">
             <button
               type="button"
               onClick={() => setActiveTab('routine')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'routine'
                   ? 'bg-lime-600 text-slate-950 shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -424,7 +425,7 @@ export function ImmersionPage() {
             <button
               type="button"
               onClick={() => setActiveTab('protocol')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'protocol'
                   ? 'bg-lime-600 text-slate-950 shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -435,7 +436,7 @@ export function ImmersionPage() {
             <button
               type="button"
               onClick={() => setActiveTab('levels')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'levels'
                   ? 'bg-lime-600 text-slate-950 shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -446,7 +447,7 @@ export function ImmersionPage() {
             <button
               type="button"
               onClick={() => setActiveTab('schedule')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'schedule'
                   ? 'bg-lime-600 text-slate-950 shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -530,7 +531,7 @@ export function ImmersionPage() {
                                 'input'
                               )
                             }
-                            className="mt-1 rounded text-sky-500 focus:ring-sky-400"
+                            className="mt-1 w-5 h-5 rounded text-sky-500 focus:ring-sky-400 cursor-pointer shrink-0"
                           />
                           <div className="space-y-1 text-xs">
                             <span className="font-bold text-sky-400 uppercase tracking-wider block">
@@ -558,7 +559,7 @@ export function ImmersionPage() {
                                 'output'
                               )
                             }
-                            className="mt-1 rounded text-emerald-500 focus:ring-emerald-400"
+                            className="mt-1 w-5 h-5 rounded text-emerald-500 focus:ring-emerald-400 cursor-pointer shrink-0"
                           />
                           <div className="space-y-1 text-xs">
                             <span className="font-bold text-emerald-400 uppercase tracking-wider block">
@@ -586,7 +587,7 @@ export function ImmersionPage() {
                                 'vocab'
                               )
                             }
-                            className="mt-1 rounded text-amber-500 focus:ring-amber-400"
+                            className="mt-1 w-5 h-5 rounded text-amber-500 focus:ring-amber-400 cursor-pointer shrink-0"
                           />
                           <div className="space-y-1 text-xs">
                             <span className="font-bold text-amber-400 uppercase tracking-wider block">

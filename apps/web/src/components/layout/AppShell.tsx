@@ -52,7 +52,7 @@ export function AppShell({ children, progress }: AppShellProps) {
   }, [mobileNavOpen]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col overflow-x-hidden">
       {/* Link de salto de acessibilidade para navegação por teclado */}
       <a
         href="#conteudo"
@@ -68,7 +68,7 @@ export function AppShell({ children, progress }: AppShellProps) {
           role="dialog"
           aria-modal="true"
           aria-label="Menu lateral móvel"
-          className="fixed inset-0 z-40 md:hidden flex"
+          className="fixed inset-0 z-40 lg:hidden flex"
         >
           {/* Backdrop escurecido */}
           <div
@@ -98,13 +98,13 @@ export function AppShell({ children, progress }: AppShellProps) {
       )}
 
       <div className="flex flex-1 min-h-screen">
-        {/* Sidebar desktop fixa à esquerda */}
-        <div className="hidden md:flex md:w-72 md:flex-col md:fixed md:inset-y-0 z-30">
+        {/* Sidebar desktop fixa à esquerda (breakpoint lg) */}
+        <div className="hidden lg:flex lg:w-64 xl:w-72 lg:flex-col lg:fixed lg:inset-y-0 z-30">
           <Sidebar progress={effectiveProgress} className="h-full" />
         </div>
 
         {/* Área principal do conteúdo */}
-        <div className="flex-1 flex flex-col md:pl-72 min-w-0">
+        <div className="flex-1 flex flex-col lg:pl-64 xl:pl-72 min-w-0">
           <Topbar
             onOpenMobileNav={() => setMobileNavOpen(true)}
             mobileNavOpen={mobileNavOpen}
@@ -113,7 +113,7 @@ export function AppShell({ children, progress }: AppShellProps) {
           <main
             id="conteudo"
             tabIndex={-1}
-            className="flex-1 p-4 md:p-6 lg:p-8 outline-none max-w-7xl w-full mx-auto"
+            className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 outline-none max-w-7xl w-full mx-auto min-w-0"
           >
             {children ?? <Outlet />}
           </main>

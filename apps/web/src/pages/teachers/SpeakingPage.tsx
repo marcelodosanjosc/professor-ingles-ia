@@ -400,12 +400,13 @@ export function SpeakingPage() {
     async function loadData() {
       setIsLoading(true);
       try {
-        const res = await apiFetch<{ data: SpeakingDrillData }>('/api/teacher/speaking', {
+        const res = await apiFetch<any>('/api/teacher/speaking', {
           method: 'POST',
           body: JSON.stringify({ action: 'load' }),
         });
-        if (isMounted && res?.data?.rapidStimuli?.length) {
-          setData(res.data);
+        const resolved = (res as any)?.data ?? res;
+        if (isMounted && (resolved?.rapidStimuli?.length || resolved?.corePatterns?.length)) {
+          setData(resolved);
         }
       } catch {
         // Fallback robusto
@@ -578,11 +579,11 @@ export function SpeakingPage() {
           </div>
 
           {/* Abas Superiores */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 overflow-x-auto">
+          <div className="flex flex-wrap gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 w-full md:w-auto max-w-full">
             <button
               type="button"
               onClick={() => setActiveTab('rapid')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'rapid'
                   ? 'bg-rose-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -593,7 +594,7 @@ export function SpeakingPage() {
             <button
               type="button"
               onClick={() => setActiveTab('patterns')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'patterns'
                   ? 'bg-rose-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -604,7 +605,7 @@ export function SpeakingPage() {
             <button
               type="button"
               onClick={() => setActiveTab('substitution')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'substitution'
                   ? 'bg-rose-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -615,7 +616,7 @@ export function SpeakingPage() {
             <button
               type="button"
               onClick={() => setActiveTab('test')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'test'
                   ? 'bg-rose-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -797,7 +798,7 @@ export function SpeakingPage() {
                             ? 'Fale no microfone ou digite imediatamente...'
                             : 'Resposta registrada'
                         }
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        className="w-full min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 pr-24 py-3 text-white text-base focus:outline-none focus:ring-2 focus:ring-rose-400"
                         autoFocus
                       />
 

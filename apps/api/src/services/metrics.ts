@@ -27,7 +27,7 @@ const DEFAULT_CHECKPOINTS = [
   { day: 90, title: 'Avaliação final de fluência e autonomia' },
 ];
 
-const DEFAULT_WEEKLY_GOALS: DashboardData['weeklyGoals'] = [
+export const DEFAULT_WEEKLY_GOALS: DashboardData['weeklyGoals'] = [
   {
     id: 'goal-speaking-1',
     title: 'Gravar teste de fala de 60 segundos com o Destruidor de Bloqueio',

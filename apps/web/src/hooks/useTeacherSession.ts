@@ -73,11 +73,14 @@ export function useTeacherSession(teacherId: TeacherId): UseTeacherSessionReturn
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<SessionSummaryData | null>(null);
 
-  // Flag para evitar múltiplos starts automáticos em React 19 / StrictMode
-  const hasStartedRef = useRef(false);
+  // Flag para rastrear início de sessão por professor e evitar múltiplos starts no React 19
+  const startedTeacherRef = useRef<string | null>(null);
 
   // Timer geral da sessão (1 tick por segundo)
   useEffect(() => {
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+      return;
+    }
     const timer = setInterval(() => {
       setElapsedSec((prev) => prev + 1);
     }, 1000);
@@ -135,8 +138,8 @@ export function useTeacherSession(teacherId: TeacherId): UseTeacherSessionReturn
   });
 
   useEffect(() => {
-    if (!hasStartedRef.current) {
-      hasStartedRef.current = true;
+    if (startedTeacherRef.current !== teacherId) {
+      startedTeacherRef.current = teacherId;
       startSessionMutation.mutate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

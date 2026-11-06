@@ -170,17 +170,17 @@ export function TeacherLayout({
       </div>
 
       {/* Cabeçalho do Professor com Métricas ao Vivo */}
-      <header className="rounded-2xl bg-slate-900 border border-slate-800 p-5 md:p-6 shadow-xl space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header className="rounded-2xl bg-slate-900 border border-slate-800 p-4 sm:p-5 md:p-6 shadow-xl space-y-5 min-w-0">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 min-w-0">
           {/* Identificação do Professor */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap sm:flex-nowrap min-w-0 flex-1">
             <div
-              className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl ${colorTheme.bg} border ${colorTheme.border} ${colorTheme.text} ${colorTheme.shadow} flex items-center justify-center shrink-0 shadow-lg`}
+              className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl ${colorTheme.bg} border ${colorTheme.border} ${colorTheme.text} ${colorTheme.shadow} flex items-center justify-center shrink-0 shadow-lg`}
             >
-              <IconComponent className="w-7 h-7 md:w-8 md:h-8" aria-hidden="true" />
+              <IconComponent className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" aria-hidden="true" />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="default" size="sm">
                   Passo {teacher.order} de 8
@@ -190,10 +190,10 @@ export function TeacherLayout({
                 </Badge>
               </div>
 
-              <h1 className="text-xl md:text-2xl font-extrabold text-white">
+              <h1 className="text-xl md:text-2xl font-extrabold text-white break-words">
                 {teacher.name}
               </h1>
-              <p className="text-xs md:text-sm text-slate-400 font-medium">
+              <p className="text-xs md:text-sm text-slate-400 font-medium break-words">
                 {teacher.tagline}
               </p>
             </div>
@@ -201,7 +201,7 @@ export function TeacherLayout({
 
           {/* Botão de Finalização em Destaque */}
           {onFinishSession && (
-            <div className="shrink-0 self-start md:self-center">
+            <div className="shrink-0 self-start md:self-center w-full md:w-auto">
               <Button
                 variant="primary"
                 size="md"
@@ -217,46 +217,46 @@ export function TeacherLayout({
         </div>
 
         {/* Barra de Métricas ao Vivo */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800/80">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 pt-4 border-t border-slate-800/80">
           {/* Cronômetro */}
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center gap-3">
-            <Clock className="w-5 h-5 text-violet-400 shrink-0" aria-hidden="true" />
-            <div>
-              <div className="text-[11px] text-slate-400 font-medium">Tempo de Sessão</div>
-              <div className="text-sm font-bold text-white font-mono">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Tempo de Sessão</div>
+              <div className="text-xs sm:text-sm font-bold text-white font-mono truncate">
                 {formatTimer(elapsedSec)}
               </div>
             </div>
           </div>
 
           {/* Exposição Auditiva */}
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center gap-3">
-            <Headphones className="w-5 h-5 text-amber-400 shrink-0" aria-hidden="true" />
-            <div>
-              <div className="text-[11px] text-slate-400 font-medium">Exposição Auditiva</div>
-              <div className="text-sm font-bold text-white">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <Headphones className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Exposição Auditiva</div>
+              <div className="text-xs sm:text-sm font-bold text-white truncate">
                 {(exposureSec / 60).toFixed(1)} min
               </div>
             </div>
           </div>
 
           {/* Tempo Falando */}
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center gap-3">
-            <Mic className="w-5 h-5 text-rose-400 shrink-0" aria-hidden="true" />
-            <div>
-              <div className="text-[11px] text-slate-400 font-medium">Tempo Falando</div>
-              <div className="text-sm font-bold text-white">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-rose-400 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Tempo Falando</div>
+              <div className="text-xs sm:text-sm font-bold text-white truncate">
                 {(speakingSec / 60).toFixed(1)} min
               </div>
             </div>
           </div>
 
           {/* Palavras Recuperadas */}
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" aria-hidden="true" />
-            <div>
-              <div className="text-[11px] text-slate-400 font-medium">Palavras Ativadas</div>
-              <div className="text-sm font-bold text-white">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Palavras Ativadas</div>
+              <div className="text-xs sm:text-sm font-bold text-white truncate">
                 {wordsRecalled}
               </div>
             </div>
@@ -267,12 +267,12 @@ export function TeacherLayout({
       {/* Grade Principal: Conteúdo Central + Barra Lateral */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Painel Central de Interação (Children) */}
-        <main className="lg:col-span-8 space-y-6">
+        <main className="lg:col-span-8 xl:col-span-9 min-w-0 space-y-6">
           {children}
         </main>
 
         {/* Barra Lateral Direita Responsiva */}
-        <aside className="lg:col-span-4 space-y-5">
+        <aside className="lg:col-span-4 xl:col-span-3 min-w-0 space-y-5">
           {/* Progresso do Módulo */}
           <Card className="border-slate-800">
             <CardContent className="p-5 space-y-3">
@@ -367,7 +367,7 @@ export function TeacherLayout({
                 <button
                   type="button"
                   onClick={() => setShowSystemPrompt(!showSystemPrompt)}
-                  className="w-full flex items-center justify-between text-xs font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between text-xs font-medium text-slate-300 hover:text-white transition-colors cursor-pointer py-1.5 px-2 min-h-[28px] rounded-lg hover:bg-slate-800/40"
                 >
                   <span className="flex items-center gap-2">
                     <FileCode className="w-4 h-4 text-violet-400" aria-hidden="true" />

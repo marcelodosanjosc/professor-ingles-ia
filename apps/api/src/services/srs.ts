@@ -45,6 +45,9 @@ export function calculateSm2(card: Sm2Card, quality: number): Sm2Result {
   // Próxima revisão somando interval dias à data atual
   const nextReview = new Date();
   nextReview.setDate(nextReview.getDate() + interval);
+  if (interval >= 1) {
+    nextReview.setHours(4, 0, 0, 0);
+  }
 
   return {
     easiness,

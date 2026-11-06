@@ -83,6 +83,18 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   }, [stopTracks]);
 
   const startRecording = useCallback(async (): Promise<void> => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        // Ignora erro caso já tenha sido finalizado
+      }
+    }
+    stopTracks();
     clearRecording();
     setError(null);
 
@@ -129,6 +141,14 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {
+          // Ignora erro
+        }
       }
       stopTracks();
       if (audioUrl) {

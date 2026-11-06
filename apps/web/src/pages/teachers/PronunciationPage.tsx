@@ -298,15 +298,16 @@ export function PronunciationPage() {
     async function loadData() {
       setIsLoading(true);
       try {
-        const res = await apiFetch<{ data: PronunciationGuideData }>(
+        const res = await apiFetch<any>(
           '/api/teacher/pronunciation',
           {
             method: 'POST',
             body: JSON.stringify({ action: 'load' }),
           }
         );
-        if (isMounted && res?.data?.top10Errors?.length) {
-          setData(res.data);
+        const resolved = (res as any)?.data ?? res;
+        if (isMounted && resolved?.top10Errors?.length) {
+          setData(resolved);
         }
       } catch {
         // Fallback robusto
@@ -396,11 +397,11 @@ export function PronunciationPage() {
           </div>
 
           {/* Abas */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 overflow-x-auto">
+          <div className="flex flex-wrap gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 w-full md:w-auto max-w-full">
             <button
               type="button"
               onClick={() => setActiveTab('errors')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'errors'
                   ? 'bg-fuchsia-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -411,7 +412,7 @@ export function PronunciationPage() {
             <button
               type="button"
               onClick={() => setActiveTab('routine')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'routine'
                   ? 'bg-fuchsia-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -422,7 +423,7 @@ export function PronunciationPage() {
             <button
               type="button"
               onClick={() => setActiveTab('test')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'test'
                   ? 'bg-fuchsia-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -553,7 +554,7 @@ export function PronunciationPage() {
                               speak(word, 'en-US', 1.0);
                               addExposureSec(1);
                             }}
-                            className="px-3 py-1 bg-slate-950 border border-slate-700/80 hover:border-fuchsia-500 rounded-lg text-xs font-mono font-medium text-slate-200 hover:text-white transition-all flex items-center gap-1.5"
+                            className="px-3 py-1.5 min-h-[28px] inline-flex items-center bg-slate-950 border border-slate-700/80 hover:border-fuchsia-500 rounded-lg text-xs font-mono font-medium text-slate-200 hover:text-white transition-all gap-1.5"
                           >
                             <Volume2 className="w-3 h-3 text-fuchsia-400" />
                             {word}
@@ -572,12 +573,12 @@ export function PronunciationPage() {
                           {item.minimalPairs.map((pair, pIdx) => (
                             <div
                               key={pIdx}
-                              className="flex items-center gap-1.5 bg-slate-950 px-3 py-1 rounded-lg border border-slate-800 text-xs font-mono"
+                              className="flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-xs font-mono"
                             >
                               <button
                                 type="button"
                                 onClick={() => speak(pair.wordA, 'en-US', 1.0)}
-                                className="text-slate-300 hover:text-white underline decoration-dotted"
+                                className="text-slate-300 hover:text-white underline decoration-dotted py-1.5 px-2 min-h-[28px] inline-flex items-center cursor-pointer"
                               >
                                 {pair.wordA}
                               </button>
@@ -585,7 +586,7 @@ export function PronunciationPage() {
                               <button
                                 type="button"
                                 onClick={() => speak(pair.wordB, 'en-US', 1.0)}
-                                className="text-fuchsia-300 font-bold hover:text-white underline decoration-dotted"
+                                className="text-fuchsia-300 font-bold hover:text-white underline decoration-dotted py-1.5 px-2 min-h-[28px] inline-flex items-center cursor-pointer"
                               >
                                 {pair.wordB}
                               </button>

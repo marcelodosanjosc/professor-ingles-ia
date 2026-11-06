@@ -14,6 +14,9 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 export function createApp(): Express {
   const app = express();
 
+  // Configuração para proxies reversos (Nginx, Traefik, PaaS)
+  app.set('trust proxy', 1);
+
   // Segurança de headers HTTP
   app.use(helmet());
 

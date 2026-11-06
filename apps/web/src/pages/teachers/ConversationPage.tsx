@@ -52,6 +52,7 @@ export function ConversationPage() {
   const [isSending, setIsSending] = useState(false);
   const [studentTurnCount, setStudentTurnCount] = useState(0);
   const [difficultyLevel, setDifficultyLevel] = useState('80% compreensível');
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [latestCorrections, setLatestCorrections] = useState<
     Array<{ wrong: string; correct: string; oneLineExplanation: string }>
   >([]);
@@ -169,14 +170,16 @@ export function ConversationPage() {
     setIsSending(true);
 
     try {
-      const response = await apiFetch<ConversationTurnResponse>('/api/teacher/conversation', {
+      let response = await apiFetch<any>('/api/teacher/conversation', {
         method: 'POST',
         body: JSON.stringify({
-          action: 'chat_turn',
+          action: conversationId ? 'message' : 'chat_turn',
           payload: {
             role: selectedRole,
             theme: customTheme || activeRoleData.theme,
             message: textToSend,
+            content: textToSend,
+            conversationId: conversationId ?? undefined,
             history: messages.slice(-6).map((m) => ({
               sender: m.sender,
               text: m.text,
@@ -185,12 +188,42 @@ export function ConversationPage() {
         }),
       });
 
-      if (response.difficultyLevel) {
-        setDifficultyLevel(response.difficultyLevel);
+      if (!response?.turn && !response?.reply) {
+        response = await apiFetch<any>('/api/teacher/conversation', {
+          method: 'POST',
+          body: JSON.stringify({
+            action: conversationId ? 'chat_turn' : 'message',
+            payload: {
+              role: selectedRole,
+              theme: customTheme || activeRoleData.theme,
+              message: textToSend,
+              content: textToSend,
+              conversationId: conversationId ?? undefined,
+              history: messages.slice(-6).map((m) => ({
+                sender: m.sender,
+                text: m.text,
+              })),
+            },
+          }),
+        });
+      }
+
+      if (response?.conversationId) {
+        setConversationId(response.conversationId);
+      }
+
+      const turn = response?.turn ?? response;
+      const reply = turn?.reply ?? response?.reply ?? 'Thank you for your response!';
+      const difficulty = turn?.difficultyLevel ?? response?.difficultyLevel;
+      const translationHint = turn?.replyTranslationHint ?? response?.replyTranslationHint;
+      const followUpQuestion = turn?.followUpQuestion ?? response?.followUpQuestion;
+
+      if (difficulty) {
+        setDifficultyLevel(difficulty);
       }
 
       // Regra dos 3 turnos: destaca bloco de correções importantes
-      let correctionsToDisplay = response.importantCorrections;
+      let correctionsToDisplay = turn?.importantCorrections ?? response?.importantCorrections;
       if (
         (!correctionsToDisplay || correctionsToDisplay.length === 0) &&
         currentTurn % 3 === 0
@@ -211,10 +244,10 @@ export function ConversationPage() {
       const teacherReply: ChatMessage = {
         id: `m-tea-${Date.now()}`,
         sender: 'teacher',
-        text: response.reply,
+        text: reply,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        translationHint: response.replyTranslationHint,
-        followUpQuestion: response.followUpQuestion,
+        translationHint,
+        followUpQuestion,
         corrections: correctionsToDisplay,
       };
 
@@ -469,7 +502,7 @@ export function ConversationPage() {
                       <button
                         type="button"
                         onClick={() => speech.speak(msg.text)}
-                        className="text-emerald-400 hover:text-emerald-300 text-xs inline-flex items-center gap-1.5 cursor-pointer font-medium"
+                        className="text-emerald-400 hover:text-emerald-300 text-xs inline-flex items-center gap-1.5 cursor-pointer font-medium py-1.5 px-2.5 min-h-[28px] rounded-lg hover:bg-emerald-950/30"
                         title="Ouvir fala nativa com TTS"
                       >
                         <Volume2 className="w-3.5 h-3.5" />
@@ -480,7 +513,7 @@ export function ConversationPage() {
                         <button
                           type="button"
                           onClick={() => toggleTranslation(msg.id)}
-                          className="text-slate-400 hover:text-slate-200 text-xs inline-flex items-center gap-1 cursor-pointer"
+                          className="text-slate-400 hover:text-slate-200 text-xs inline-flex items-center gap-1 cursor-pointer py-1.5 px-2.5 min-h-[28px] rounded-lg hover:bg-slate-800/40"
                         >
                           <Languages className="w-3.5 h-3.5" />
                           <span>{msg.showTranslation ? 'Ocultar tradução' : 'Ver tradução'}</span>
@@ -537,7 +570,7 @@ export function ConversationPage() {
               }}
               placeholder="Digite sua resposta em inglês ou use o microfone para falar..."
               rows={2}
-              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs md:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
+              className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs md:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
             />
 
             <div className="flex flex-col gap-2 shrink-0">

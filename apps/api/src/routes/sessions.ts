@@ -59,6 +59,23 @@ sessionsRouter.post('/:id/finish', async (req, res, next) => {
       throw new HttpError(404, 'SESSION_NOT_FOUND', 'Sessão não encontrada');
     }
 
+    // Idempotência: se a sessão já foi finalizada, retorna os dados sem duplicar progresso
+    if (session.endedAt !== null) {
+      const currentMp = await prisma.moduleProgress.findUnique({
+        where: { userId_teacherId: { userId, teacherId: session.teacherId } },
+      });
+      const streak = await prisma.streak.findUnique({
+        where: { userId },
+      });
+      res.status(200).json({
+        session,
+        summary: session.summary,
+        moduleProgress: currentMp?.percent ?? 0,
+        streak: streak?.current ?? 0,
+      });
+      return;
+    }
+
     const tid = session.teacherId as TeacherId;
     const teacherMeta = teacherById(tid);
     const defaultDeltas = TEACHER_SKILL_DELTAS[tid] ?? { speaking: 2 };

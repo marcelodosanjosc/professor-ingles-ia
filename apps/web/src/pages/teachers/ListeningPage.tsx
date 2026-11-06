@@ -298,15 +298,16 @@ export function ListeningPage() {
       setIsLoadingContent(true);
       setContentError(null);
       try {
-        const response = await apiFetch<{ data: ListeningSessionData }>('/api/teacher/listening', {
+        const response = await apiFetch<any>('/api/teacher/listening', {
           method: 'POST',
           body: JSON.stringify({
             action: 'load',
             payload: { contentType },
           }),
         });
-        if (response?.data?.levels?.length) {
-          setSessionData(response.data);
+        const resolved = (response as any)?.data ?? response;
+        if (resolved?.levels?.length) {
+          setSessionData(resolved);
           setCurrentLevelIndex(0);
           setUserTranscript('');
           setHasChecked(false);
@@ -508,7 +509,7 @@ export function ListeningPage() {
               </div>
 
               {/* Indicadores de Nível */}
-              <div className="flex items-center gap-1.5" role="tablist" aria-label="Níveis de dificuldade">
+              <div className="flex flex-wrap items-center gap-1.5 max-w-full" role="tablist" aria-label="Níveis de dificuldade">
                 {sessionData.levels.map((lvl, idx) => {
                   const isActive = idx === currentLevelIndex;
                   return (
@@ -524,7 +525,7 @@ export function ListeningPage() {
                         setCheckScore(null);
                         stopSpeaking();
                       }}
-                      className={`w-9 h-9 rounded-xl text-xs font-bold transition-all focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+                      className={`w-9 h-9 min-h-[36px] rounded-xl text-xs font-bold transition-all focus:outline-none focus:ring-2 focus:ring-amber-400 ${
                         isActive
                           ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-950/60 scale-105'
                           : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-slate-700/60'
@@ -871,7 +872,7 @@ export function ListeningPage() {
                                 speak(item.phrase, 'en-US', s);
                                 addExposureSec(3);
                               }}
-                              className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                              className={`text-xs px-2.5 py-1.5 min-h-[28px] inline-flex items-center rounded-lg font-semibold transition-all ${
                                 speed === s && isActive
                                   ? 'bg-amber-500 text-slate-950'
                                   : 'text-slate-400 hover:text-white'
@@ -972,7 +973,7 @@ export function ListeningPage() {
                       type="checkbox"
                       checked={isDone}
                       onChange={() => handleToggleRoutineStep(idx, step.minutes)}
-                      className="mt-1 w-4 h-4 rounded text-amber-500 focus:ring-amber-400 border-slate-700 bg-slate-900"
+                      className="mt-1 w-5 h-5 rounded text-amber-500 focus:ring-amber-400 border-slate-700 bg-slate-900 cursor-pointer shrink-0"
                     />
 
                     <div className="space-y-1 flex-1">

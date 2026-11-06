@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   BookOpen,
   Volume2,
@@ -219,6 +219,15 @@ export function VocabularyPage() {
   const [currentSrsIndex, setCurrentSrsIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [srsSuccessMessage, setSrsSuccessMessage] = useState<string | null>(null);
+  const reviewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (reviewTimeoutRef.current) {
+        clearTimeout(reviewTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Estados do Teste Ativo
   const [currentTestIndex, setCurrentTestIndex] = useState(0);
@@ -232,9 +241,10 @@ export function VocabularyPage() {
     async function loadVocab() {
       setLoadingVocab(true);
       try {
-        const data = await apiFetch<{ items?: VocabCardData[] }>('/api/vocab');
-        if (isMounted && data?.items && data.items.length > 0) {
-          setVocabList(data.items);
+        const data = await apiFetch<any>('/api/vocab');
+        const items = data?.items ?? data?.data?.items ?? (Array.isArray(data) ? data : null);
+        if (isMounted && items && items.length > 0) {
+          setVocabList(items);
         }
       } catch {
         // Fallback para INITIAL_VOCAB_ITEMS
@@ -297,7 +307,10 @@ export function VocabularyPage() {
     }
 
     // Avança para o próximo card da fila após 600ms
-    setTimeout(() => {
+    if (reviewTimeoutRef.current) {
+      clearTimeout(reviewTimeoutRef.current);
+    }
+    reviewTimeoutRef.current = setTimeout(() => {
       setIsFlipped(false);
       setSrsSuccessMessage(null);
       if (currentSrsIndex + 1 < srsQueue.length) {
@@ -433,7 +446,7 @@ export function VocabularyPage() {
                       key={block.id}
                       type="button"
                       onClick={() => setSelectedBlock(block.id)}
-                      className={`text-xs px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer border ${
+                      className={`text-xs px-3 py-1.5 min-h-[28px] inline-flex items-center rounded-xl font-medium transition-all cursor-pointer border ${
                         isSelected
                           ? 'bg-sky-600 text-white border-sky-400 shadow-md shadow-sky-950/40'
                           : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'

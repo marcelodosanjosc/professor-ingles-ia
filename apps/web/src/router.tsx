@@ -5,11 +5,15 @@ import { AppShell } from './components/layout/AppShell';
 import { Spinner } from './components/ui/Spinner';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
-import { Onboarding } from './pages/Onboarding';
-import { Dashboard } from './pages/Dashboard';
 import { TeacherPlaceholder } from './pages/teachers/TeacherPlaceholder';
 import { NotFound } from './pages/NotFound';
 
+const Onboarding = lazy(() =>
+  import('./pages/Onboarding').then((m) => ({ default: m.Onboarding })),
+);
+const Dashboard = lazy(() =>
+  import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })),
+);
 const ArchitectPage = lazy(() =>
   import('./pages/teachers/ArchitectPage').then((m) => ({ default: m.ArchitectPage })),
 );

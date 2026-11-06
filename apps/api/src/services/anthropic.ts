@@ -20,6 +20,7 @@ import {
 } from '@fluencialab/shared';
 import { prisma } from '../db';
 import { env } from '../config/env';
+import { HttpError } from '../lib/http';
 import { buildTeacherSystemPrompt } from './promptBuilder';
 import { VOCAB_CATALOG } from './vocabData';
 import {
@@ -42,11 +43,11 @@ if (env.ANTHROPIC_API_KEY) {
 
 /**
  * Utilitário seguro para chamar Anthropic com extração de JSON e validação Zod,
- * com fallback transparente para o gerador mock caso ocorra qualquer erro ou ausência de chave.
+ * timeout de 30 segundos e fallback transparente para o gerador mock caso ocorra erro ou ausência de chave.
  */
 async function callAnthropicJsonGuard<T>(
   system: string,
-  userMessage: string,
+  userMessageOrMessages: string | { role: 'user' | 'assistant'; content: string }[],
   validator: (raw: unknown) => T,
   fallbackGenerator: () => T,
 ): Promise<T> {
@@ -54,13 +55,21 @@ async function callAnthropicJsonGuard<T>(
     return fallbackGenerator();
   }
 
+  const messages: { role: 'user' | 'assistant'; content: string }[] =
+    typeof userMessageOrMessages === 'string'
+      ? [{ role: 'user', content: userMessageOrMessages }]
+      : userMessageOrMessages;
+
   try {
-    const response = await anthropicClient.messages.create({
-      model: env.ANTHROPIC_MODEL,
-      max_tokens: 4096,
-      system,
-      messages: [{ role: 'user', content: userMessage }],
-    });
+    const response = await anthropicClient.messages.create(
+      {
+        model: env.ANTHROPIC_MODEL,
+        max_tokens: 4096,
+        system,
+        messages,
+      },
+      { timeout: 30_000 },
+    );
 
     const block = response.content.find((c) => c.type === 'text');
     if (!block || block.type !== 'text') {
@@ -230,10 +239,10 @@ export async function runTeacherAction(params: RunTeacherActionParams): Promise<
 
         if (correct) {
           if (input.vocabId) {
-            await prisma.vocabItem.update({
-              where: { id: input.vocabId },
+            await prisma.vocabItem.updateMany({
+              where: { id: input.vocabId, userId },
               data: { timesRecalled: { increment: 1 } },
-            }).catch(() => undefined);
+            });
           } else {
             await prisma.vocabItem.updateMany({
               where: { userId, term: input.targetTerm },
@@ -362,12 +371,38 @@ export async function runTeacherAction(params: RunTeacherActionParams): Promise<
         };
       }
 
-      if (action === 'message') {
-        const conversationId = payload.conversationId as string;
-        const content = (payload.content as string) || '';
+      if (action === 'message' || action === 'chat_turn') {
+        let conversationId = (payload.conversationId as string) || undefined;
+        const content = (((payload.content as string) || (payload.message as string)) ?? '').trim();
 
-        if (!conversationId || !content.trim()) {
-          throw new Error('conversationId e content são obrigatórios para enviar mensagem.');
+        if (conversationId) {
+          const convo = await prisma.conversation.findFirst({
+            where: { id: conversationId, userId },
+          });
+          if (!convo) {
+            throw new HttpError(404, 'CONVERSATION_NOT_FOUND', 'Conversa não encontrada');
+          }
+        } else {
+          // Reutiliza conversa ativa ou cria automaticamente para teacherId 'conversation'
+          let activeConvo = await prisma.conversation.findFirst({
+            where: { userId, teacherId: 'conversation', completed: false },
+            orderBy: { createdAt: 'desc' },
+          });
+
+          if (!activeConvo) {
+            activeConvo = await prisma.conversation.create({
+              data: {
+                userId,
+                teacherId: 'conversation',
+                completed: false,
+              },
+            });
+          }
+          conversationId = activeConvo.id;
+        }
+
+        if (!content) {
+          throw new HttpError(400, 'CONTENT_REQUIRED', 'Mensagem do aluno não pode ser vazia');
         }
 
         // Salva a mensagem do aluno
@@ -375,7 +410,7 @@ export async function runTeacherAction(params: RunTeacherActionParams): Promise<
           data: {
             conversationId,
             role: 'user',
-            content: content.trim(),
+            content,
           },
         });
 
@@ -384,7 +419,7 @@ export async function runTeacherAction(params: RunTeacherActionParams): Promise<
           where: { conversationId, role: 'user' },
         });
 
-        const wordCount = content.trim().split(/\s+/).length;
+        const wordCount = content.split(/\s+/).length;
         const needsFollowUp = wordCount < 8;
 
         // Regra crítica: a cada 3 respostas do aluno (ou erro claro), preenche importantCorrections
@@ -415,32 +450,6 @@ export async function runTeacherAction(params: RunTeacherActionParams): Promise<
           });
         }
 
-        // Se houver correções, registra em ErrorRecord no Prisma
-        for (const corr of importantCorrections) {
-          await prisma.errorRecord.upsert({
-            where: {
-              userId_phrase_correction: {
-                userId,
-                phrase: corr.wrong,
-                correction: corr.correct,
-              },
-            },
-            create: {
-              userId,
-              teacherId: 'conversation',
-              type: 'grammar',
-              phrase: corr.wrong,
-              correction: corr.correct,
-              explanation: corr.oneLineExplanation,
-              count: 1,
-            },
-            update: {
-              count: { increment: 1 },
-              lastSeen: new Date(),
-            },
-          });
-        }
-
         const replyOptions = [
           'That sounds really intriguing! Tell me a bit more about how that turned out for you.',
           'I totally get what you mean. In that kind of situation, what is usually your first reaction?',
@@ -454,7 +463,7 @@ export async function runTeacherAction(params: RunTeacherActionParams): Promise<
           ? 'Could you elaborate just a little more with a specific example?'
           : undefined;
 
-        const turnResponse = {
+        const fallbackTurn = {
           reply: selectedReply,
           replyTranslationHint: 'Isso soa muito interessante! Conte-me um pouco mais sobre como isso terminou.',
           followUpQuestion: followUp,
@@ -463,9 +472,66 @@ export async function runTeacherAction(params: RunTeacherActionParams): Promise<
           wordsUsedCount: selectedReply.split(/\s+/).length,
         };
 
-        const validatedTurn = conversationTurnResponseSchema.parse(turnResponse);
+        // Histórico recente para passar à Anthropic se houver chave configurada
+        const recentMessages = await prisma.message.findMany({
+          where: { conversationId },
+          orderBy: { createdAt: 'asc' },
+          take: 10,
+        });
 
-        // Salva a resposta do assistente
+        const anthropicMessages = recentMessages.map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        }));
+
+        const conversationSystemPrompt = `${systemPrompt}
+
+IMPORTANTE: Responda estritamente em formato JSON compatível com o schema:
+{
+  "reply": "sua resposta em inglês natural e acolhedora mantendo a conversa",
+  "replyTranslationHint": "dica de tradução em português para apoiar o aluno",
+  "followUpQuestion": ${needsFollowUp ? '"pergunta amigável estimulando o aluno a elaborar mais"' : 'null'},
+  "difficultyLevel": "80% compreensível",
+  "importantCorrections": ${shouldCorrect ? '[{"wrong": "frase errada dita pelo aluno", "correct": "frase correta", "oneLineExplanation": "explicação curta em português"}]' : '[]'},
+  "wordsUsedCount": 15
+}`;
+
+        const validatedTurn = await callAnthropicJsonGuard(
+          conversationSystemPrompt,
+          anthropicMessages,
+          (raw) => conversationTurnResponseSchema.parse(raw),
+          () => conversationTurnResponseSchema.parse(fallbackTurn),
+        );
+
+        // Se houver correções, registra em ErrorRecord no Prisma
+        if (validatedTurn.importantCorrections && validatedTurn.importantCorrections.length > 0) {
+          for (const corr of validatedTurn.importantCorrections) {
+            await prisma.errorRecord.upsert({
+              where: {
+                userId_phrase_correction: {
+                  userId,
+                  phrase: corr.wrong,
+                  correction: corr.correct,
+                },
+              },
+              create: {
+                userId,
+                teacherId: 'conversation',
+                type: 'grammar',
+                phrase: corr.wrong,
+                correction: corr.correct,
+                explanation: corr.oneLineExplanation,
+                count: 1,
+              },
+              update: {
+                count: { increment: 1 },
+                lastSeen: new Date(),
+              },
+            });
+          }
+        }
+
+        // Salva a resposta do assistente no banco
         await prisma.message.create({
           data: {
             conversationId,
@@ -484,20 +550,30 @@ export async function runTeacherAction(params: RunTeacherActionParams): Promise<
           orderBy: { createdAt: 'asc' },
         });
 
+        const primaryCorrection = validatedTurn.importantCorrections[0] ?? null;
+
         return {
           turn: validatedTurn,
           userTurnCount,
           messages: allMessages,
+          conversationId,
+          // Compatibilidade na raiz para front-ends que consom diretamente as propriedades
+          reply: validatedTurn.reply,
+          replyTranslationHint: validatedTurn.replyTranslationHint,
+          followUpQuestion: validatedTurn.followUpQuestion,
+          difficultyLevel: validatedTurn.difficultyLevel,
+          importantCorrections: validatedTurn.importantCorrections,
+          correction: primaryCorrection,
         };
       }
 
       if (action === 'finish_conversation') {
         const conversationId = payload.conversationId as string;
         if (conversationId) {
-          await prisma.conversation.update({
-            where: { id: conversationId },
+          await prisma.conversation.updateMany({
+            where: { id: conversationId, userId },
             data: { completed: true },
-          }).catch(() => undefined);
+          });
         }
 
         return {

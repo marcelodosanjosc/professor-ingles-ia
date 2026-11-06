@@ -27,7 +27,9 @@ const authRateLimiter = rateLimit({
   },
 });
 
-authRouter.use(authRateLimiter);
+// Limita só as rotas sensíveis a força bruta (login/cadastro).
+// /me e /logout ficam de fora: /me roda a cada carregamento de página.
+authRouter.use(['/login', '/register'], authRateLimiter);
 
 authRouter.post('/register', async (req, res, next) => {
   try {
