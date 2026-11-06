@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Segurança da cadeia de suprimentos:
+# 1) só instala versões publicadas há pelo menos 24h (1440 min)
+minimumReleaseAge: 1440
+# 2) scripts de instalação bloqueados, exceto pacotes nativos explicitamente autorizados
+allowBuilds:
+  '@prisma/engines': true
+  better-sqlite3: true
+  esbuild: true
+  prisma: true
+strictPeerDependencies: false

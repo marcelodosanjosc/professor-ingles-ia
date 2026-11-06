@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.db
+*.db-journal
+apps/api/uploads/
+apps/api/src/generated/
+coverage/
+.DS_Store
+*.log
