@@ -13,10 +13,12 @@ declare global {
 
 export const SESSION_COOKIE_NAME = 'fl_session';
 
+const isSecure = env.WEB_ORIGIN.startsWith('https://');
+
 export const SESSION_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
-  sameSite: 'strict',
-  secure: env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  secure: isSecure,
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias em ms
 };
@@ -32,8 +34,8 @@ export function setSessionCookie(res: Response, userId: string): void {
 export function clearSessionCookie(res: Response): void {
   res.clearCookie(SESSION_COOKIE_NAME, {
     httpOnly: true,
-    sameSite: 'strict',
-    secure: env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    secure: isSecure,
     path: '/',
   });
 }
