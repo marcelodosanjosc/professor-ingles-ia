@@ -19,14 +19,13 @@ export function createApp(): Express {
   // Configuração para proxies reversos (Nginx, Traefik, PaaS)
   app.set('trust proxy', 1);
 
-  // Segurança de headers HTTP (desativa upgrade-insecure-requests quando WEB_ORIGIN é HTTP)
-  const isHttpsOrigin = env.WEB_ORIGIN.startsWith('https://');
+  // Segurança de headers HTTP (desativa upgrade-insecure-requests quando acessado via HTTP)
   app.use(
     helmet({
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-          upgradeInsecureRequests: isHttpsOrigin ? [] : null,
+          upgradeInsecureRequests: null,
         },
       },
     }),
@@ -38,11 +37,21 @@ export function createApp(): Express {
   // Parse de cookies
   app.use(cookieParser());
 
-  // CORS manual restrito a WEB_ORIGIN com credentials (sem dependência cors)
+  // Origens autorizadas (env configurado + subdomínio de produção)
+  const allowedOrigins = new Set([
+    env.WEB_ORIGIN,
+    'http://fluencialab.marcelocaldasdevops.com',
+    'https://fluencialab.marcelocaldasdevops.com',
+    'http://136.112.211.206:8080',
+    'http://136.112.211.206',
+  ]);
+  const isAllowedOrigin = (origin?: string) => Boolean(origin && allowedOrigins.has(origin));
+
+  // CORS manual restrito às origens autorizadas com credentials
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin === env.WEB_ORIGIN) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
+    if (isAllowedOrigin(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin!);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader(
         'Access-Control-Allow-Methods',
@@ -63,7 +72,7 @@ export function createApp(): Express {
     next();
   });
 
-  // Proteção CSRF simples para métodos não-GET (exigir Origin igual a WEB_ORIGIN ou ausente em test)
+  // Proteção CSRF simples para métodos não-GET (exigir Origin autorizada ou ausente em test)
   app.use((req, res, next) => {
     const isSafeMethod =
       req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS';
@@ -80,7 +89,7 @@ export function createApp(): Express {
       return;
     }
 
-    if (origin !== env.WEB_ORIGIN) {
+    if (!isAllowedOrigin(origin)) {
       res.status(403).json({
         error: {
           code: 'CSRF_FORBIDDEN',
