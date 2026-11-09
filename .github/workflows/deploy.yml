@@ -70,7 +70,7 @@ jobs:
             rm -f /tmp/fluencialab-app.tar.gz
 
             echo "==> Subindo container com mem_limit: 256m na porta 8080..."
-            docker compose up -d --no-build
+            docker compose up -d --force-recreate
 
             echo "==> Limpando imagens antigas (dangling) para economizar disco..."
             docker image prune -f
