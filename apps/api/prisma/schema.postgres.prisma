@@ -1,0 +1,205 @@
+// FluênciaLab — modelo de dados (Prisma 7, PostgreSQL em produção)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile            Profile?
+  streak             Streak?
+  studyPlans         StudyPlan[]
+  sessions           Session[]
+  vocabItems         VocabItem[]
+  errors             ErrorRecord[]
+  pronunciationTests PronunciationTest[]
+  achievements       Achievement[]
+  moduleProgress     ModuleProgress[]
+  conversations      Conversation[]
+}
+
+/// Variáveis do onboarding (ver packages/shared/src/profile.ts)
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  targetLanguage  String
+  nativeLanguage  String
+  level           String
+  levelOther      String?
+  goal            String
+  goalOther       String?
+  minutesPerDay   Int
+  deadlineMonths  Int
+  otherLanguages  Json     // string[]
+  mainDifficulty  String
+  interests       Json     // string[]
+  routine         String
+  routineOther    String?
+  hardSounds      String?
+  blockSituations String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StudyPlan {
+  id          String   @id @default(cuid())
+  userId      String
+  active      Boolean  @default(true)
+  startDate   DateTime @default(now())
+  diagnosis   Json
+  learnFirst  Json
+  phases      Json
+  dailyRoutine Json
+  weeklyGoals Json
+  checkpoints Json
+  ignoreList  Json
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, active])
+}
+
+model Session {
+  id            String    @id @default(cuid())
+  userId        String
+  teacherId     String
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  durationSec   Int       @default(0)
+  speakingSec   Int       @default(0)
+  exposureSec   Int       @default(0)
+  wordsRecalled Int       @default(0)
+  summary       Json?
+  skillDeltas   Json?     // Partial<Record<Skill, number>>
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@index([userId, startedAt])
+  @@index([userId, teacherId])
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  sessionId String?
+  teacherId String
+  completed Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session   Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  messages  Message[]
+
+  @@index([userId, teacherId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           String       // "user" | "assistant"
+  content        String
+  meta           Json?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model VocabItem {
+  id            String   @id @default(cuid())
+  userId        String
+  term          String
+  translation   String
+  pronunciation String?
+  example1      String?
+  example2      String?
+  collocation   String?
+  block         String
+  isTop50       Boolean  @default(false)
+  // SM-2
+  easiness      Float    @default(2.5)
+  interval      Int      @default(0)
+  repetitions   Int      @default(0)
+  nextReview    DateTime @default(now())
+  lastReviewed  DateTime?
+  timesRecalled Int      @default(0)
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, term])
+  @@index([userId, nextReview])
+}
+
+model ErrorRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  teacherId   String
+  type        String   // grammar | vocabulary | pronunciation | translation | ...
+  phrase      String
+  correction  String
+  explanation String?
+  count       Int      @default(1)
+  lastSeen    DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, phrase, correction])
+  @@index([userId, count])
+}
+
+model PronunciationTest {
+  id         String   @id @default(cuid())
+  userId     String
+  phrase     String
+  audioPath  String?
+  transcript String?
+  selfScore  Int?
+  aiScore    Int?
+  weekIndex  Int
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, weekIndex])
+}
+
+model Achievement {
+  id         String   @id @default(cuid())
+  userId     String
+  code       String
+  title      String
+  unlockedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, code])
+}
+
+model Streak {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  current       Int       @default(0)
+  longest       Int       @default(0)
+  lastActiveDay String?   // yyyy-mm-dd no fuso do usuário
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ModuleProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  teacherId String
+  percent   Int      @default(0)
+  state     Json?
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teacherId])
+}

@@ -1,0 +1,34 @@
+services:
+  fluencialab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fluencialab-app
+    restart: unless-stopped
+    mem_limit: 256m
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      # Reaproveita o container PostgreSQL existente (db) na rede do bairro-seguro
+      # O entrypoint cria automaticamente o database 'fluencialab' caso ainda não exista
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/fluencialab?schema=public}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      SEED_ON_START: ${SEED_ON_START:-true}
+    networks:
+      - default
+      - bairro_seguro_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  bairro_seguro_net:
+    external: true
+    # Nome padrão da rede criada pelo docker-compose do bairro-seguro-api na VPS
+    name: ${POSTGRES_NETWORK:-bairro-seguro-api_default}

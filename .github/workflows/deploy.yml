@@ -1,0 +1,61 @@
+name: Deploy to GCP VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf "%s\n" "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          echo "" >> ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            "$VM_USER@$VM_HOST" << 'EOF'
+
+            set -e
+
+            echo "==> Verificando diretório do projeto..."
+            if [ ! -d ~/professor-ingles-ia ]; then
+              git clone https://github.com/marcelodosanjosc/professor-ingles-ia.git ~/professor-ingles-ia
+            fi
+
+            cd ~/professor-ingles-ia
+
+            echo "==> Atualizando código (git pull)..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "==> Subindo container com mem_limit: 256m na porta 8080..."
+            docker compose up --build -d
+
+            echo "==> Limpando imagens antigas (dangling) para economizar disco..."
+            docker image prune -f
+
+            echo "==> Status dos containers:"
+            docker compose ps
+
+            echo "==> Deploy do FluênciaLab concluído com sucesso!"
+          EOF

@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -94,6 +96,16 @@ export function createApp(): Express {
   app.use('/api/sessions', sessionsRouter);
   app.use('/api/vocab', vocabRouter);
   app.use('/api/pronunciation', pronunciationRouter);
+
+  // Servir frontend React estático em produção (quando dist existir)
+  const webDistPath =
+    process.env.WEB_DIST_PATH || path.resolve(process.cwd(), '../web/dist');
+  if (existsSync(webDistPath)) {
+    app.use(express.static(webDistPath));
+    app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
+      res.sendFile(path.join(webDistPath, 'index.html'));
+    });
+  }
 
   // Tratamento de rota não encontrada (404)
   app.use(notFoundHandler);
