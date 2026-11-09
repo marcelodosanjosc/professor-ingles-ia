@@ -59,4 +59,4 @@ WORKDIR /app/apps/api
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "node scripts/docker-entrypoint.mjs && npx tsx src/server.ts"]
+CMD ["sh", "-c", "node scripts/docker-entrypoint.mjs && ./node_modules/.bin/tsx src/server.ts"]

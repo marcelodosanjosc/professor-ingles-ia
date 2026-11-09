@@ -44,23 +44,27 @@ async function main() {
   if (isPostgres) {
     await ensurePostgresDatabase(dbUrl);
     console.log('🔄 Sincronizando schema Prisma com PostgreSQL...');
-    execSync('npx prisma db push --schema=prisma/schema.postgres.prisma', {
+    execSync('./node_modules/.bin/prisma db push --schema=prisma/schema.postgres.prisma', {
       stdio: 'inherit',
     });
   } else {
     console.log('🔄 Sincronizando schema Prisma com SQLite...');
-    execSync('npx prisma migrate deploy', {
+    execSync('./node_modules/.bin/prisma migrate deploy', {
       stdio: 'inherit',
     });
   }
 
   if (process.env.SEED_ON_START === 'true') {
     console.log('🌱 Executando seed inicial...');
-    execSync('npx tsx prisma/seed.ts', { stdio: 'inherit' });
+    execSync('./node_modules/.bin/tsx prisma/seed.ts', { stdio: 'inherit' });
   }
 }
 
-main().catch((err) => {
-  console.error('❌ Erro no entrypoint do container:', err);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error('❌ Erro no entrypoint do container:', err);
+    process.exit(1);
+  });

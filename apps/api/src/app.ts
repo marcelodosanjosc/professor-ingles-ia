@@ -19,8 +19,18 @@ export function createApp(): Express {
   // Configuração para proxies reversos (Nginx, Traefik, PaaS)
   app.set('trust proxy', 1);
 
-  // Segurança de headers HTTP
-  app.use(helmet());
+  // Segurança de headers HTTP (desativa upgrade-insecure-requests quando WEB_ORIGIN é HTTP)
+  const isHttpsOrigin = env.WEB_ORIGIN.startsWith('https://');
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          upgradeInsecureRequests: isHttpsOrigin ? [] : null,
+        },
+      },
+    }),
+  );
 
   // Limite e parse do payload JSON
   app.use(express.json({ limit: '1mb' }));
