@@ -13,6 +13,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js & pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable Corepack & Build Docker Image in GitHub Runner
+        run: |
+          docker build -t fluencialab-app:latest .
+          docker save fluencialab-app:latest | gzip > /tmp/fluencialab-app.tar.gz
+
       - name: Setup SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -25,6 +35,13 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           chmod 644 ~/.ssh/known_hosts
+
+      - name: Transfer Image to VPS
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no /tmp/fluencialab-app.tar.gz "$VM_USER@$VM_HOST:/tmp/fluencialab-app.tar.gz"
 
       - name: Deploy via SSH
         env:
@@ -48,8 +65,12 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            echo "==> Carregando imagem Docker pré-compilada..."
+            gunzip -c /tmp/fluencialab-app.tar.gz | docker load
+            rm -f /tmp/fluencialab-app.tar.gz
+
             echo "==> Subindo container com mem_limit: 256m na porta 8080..."
-            docker compose up --build -d
+            docker compose up -d --no-build
 
             echo "==> Limpando imagens antigas (dangling) para economizar disco..."
             docker image prune -f
