@@ -6,7 +6,7 @@ export interface UseAudioRecorderReturn {
   isRecording: boolean;
   durationSec: number;
   startRecording: () => Promise<void>;
-  stopRecording: () => Promise<void>;
+  stopRecording: () => Promise<Blob | null>;
   clearRecording: () => void;
   supported: boolean;
   error: string | null;
@@ -48,31 +48,32 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     }
   }, []);
 
-  const stopRecording = useCallback(async (): Promise<void> => {
+  const stopRecording = useCallback(async (): Promise<Blob | null> => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      return new Promise<void>((resolve) => {
+      return new Promise<Blob | null>((resolve) => {
         const recorder = mediaRecorderRef.current!;
         recorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm;codecs=opus' });
+          const mimeType = recorder.mimeType || 'audio/webm;codecs=opus';
+          const blob = new Blob(chunksRef.current, { type: mimeType });
           chunksRef.current = [];
           const url = URL.createObjectURL(blob);
           setAudioBlob(blob);
           setAudioUrl(url);
           setIsRecording(false);
           stopTracks();
-          resolve();
+          resolve(blob);
         };
         try {
           recorder.stop();
         } catch {
           setIsRecording(false);
           stopTracks();
-          resolve();
+          resolve(null);
         }
       });
     }
@@ -80,6 +81,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     // Se estava em gravação simulada
     setIsRecording(false);
     stopTracks();
+    return null;
   }, [stopTracks]);
 
   const startRecording = useCallback(async (): Promise<void> => {
@@ -105,7 +107,13 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       streamRef.current = stream;
 
       const mediaRecorder = new MediaRecorder(stream);

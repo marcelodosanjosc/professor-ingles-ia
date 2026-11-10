@@ -11,6 +11,7 @@ import { teacherRouter } from './routes/teacher';
 import { sessionsRouter } from './routes/sessions';
 import { vocabRouter } from './routes/vocab';
 import { pronunciationRouter } from './routes/pronunciation';
+import { transcribeRouter } from './routes/transcribe';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 export function createApp(): Express {
@@ -31,8 +32,8 @@ export function createApp(): Express {
     }),
   );
 
-  // Limite e parse do payload JSON
-  app.use(express.json({ limit: '1mb' }));
+  // Limite e parse do payload JSON (permite áudio base64)
+  app.use(express.json({ limit: '10mb' }));
 
   // Parse de cookies
   app.use(cookieParser());
@@ -115,6 +116,7 @@ export function createApp(): Express {
   app.use('/api/sessions', sessionsRouter);
   app.use('/api/vocab', vocabRouter);
   app.use('/api/pronunciation', pronunciationRouter);
+  app.use('/api/transcribe', transcribeRouter);
 
   // Servir frontend React estático em produção (quando dist existir)
   const webDistPath =

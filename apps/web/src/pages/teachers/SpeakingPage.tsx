@@ -422,14 +422,14 @@ export function SpeakingPage() {
 
   // Atualiza campo com STT
   useEffect(() => {
-    if (transcript && isListening) {
+    if (transcript) {
       if (activeTab === 'rapid') {
         setUserResponse(transcript);
       } else if (activeTab === 'test') {
         setUnexpectedResponse(transcript);
       }
     }
-  }, [transcript, isListening, activeTab]);
+  }, [transcript, activeTab]);
 
   // Lista de estímulos filtrados
   const filteredStimuli = useMemo(() => {

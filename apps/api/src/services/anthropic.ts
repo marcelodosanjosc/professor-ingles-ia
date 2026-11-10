@@ -1,4 +1,3 @@
-import { Anthropic } from '@anthropic-ai/sdk';
 import {
   type TeacherId,
   type PromptVariable,
@@ -19,7 +18,6 @@ import {
   VOCAB_BLOCKS,
 } from '@fluencialab/shared';
 import { prisma } from '../db';
-import { env } from '../config/env';
 import { HttpError } from '../lib/http';
 import { buildTeacherSystemPrompt } from './promptBuilder';
 import { VOCAB_CATALOG } from './vocabData';
@@ -31,27 +29,21 @@ import {
   generateDirectThinkingData,
   generateImmersionPlan,
 } from './mockGenerators';
+import { createLlmClient, extractJsonPayload } from './llmClient';
 
-let anthropicClient: Anthropic | null = null;
-if (env.ANTHROPIC_API_KEY) {
-  try {
-    anthropicClient = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-  } catch (err) {
-    console.warn('Falha ao instanciar cliente Anthropic. Operando em modo determinístico.', err);
-  }
-}
+const llmClient = createLlmClient();
 
 /**
- * Utilitário seguro para chamar Anthropic com extração de JSON e validação Zod,
- * timeout de 30 segundos e fallback transparente para o gerador mock caso ocorra erro ou ausência de chave.
+ * Chama o provedor LLM configurado (Groq / Gemini / Anthropic) com extração de JSON
+ * e validação Zod. Sem chave ou em erro → fallback mock determinístico.
  */
-async function callAnthropicJsonGuard<T>(
+async function callLlmJsonGuard<T>(
   system: string,
   userMessageOrMessages: string | { role: 'user' | 'assistant'; content: string }[],
   validator: (raw: unknown) => T,
   fallbackGenerator: () => T,
 ): Promise<T> {
-  if (!anthropicClient) {
+  if (!llmClient) {
     return fallbackGenerator();
   }
 
@@ -61,42 +53,24 @@ async function callAnthropicJsonGuard<T>(
       : userMessageOrMessages;
 
   try {
-    const response = await anthropicClient.messages.create(
-      {
-        model: env.ANTHROPIC_MODEL,
-        max_tokens: 4096,
-        system,
-        messages,
-      },
-      { timeout: 30_000 },
-    );
-
-    const block = response.content.find((c) => c.type === 'text');
-    if (!block || block.type !== 'text') {
+    const text = await llmClient.complete({ system, messages });
+    if (!text) {
       return fallbackGenerator();
     }
 
-    const text = block.text.trim();
-    // Procura bloco de código JSON ou o primeiro { / [ até o último } / ]
-    let jsonStr = text;
-    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (codeBlockMatch && codeBlockMatch[1]) {
-      jsonStr = codeBlockMatch[1].trim();
-    } else {
-      const firstCurly = text.indexOf('{');
-      const lastCurly = text.lastIndexOf('}');
-      if (firstCurly !== -1 && lastCurly > firstCurly) {
-        jsonStr = text.slice(firstCurly, lastCurly + 1);
-      }
-    }
-
-    const parsed = JSON.parse(jsonStr);
+    const parsed = JSON.parse(extractJsonPayload(text));
     return validator(parsed);
   } catch (err) {
-    console.warn('Anthropic API falhou ou retornou formato incompatível. Ativando fallback determinístico.', err);
+    console.warn(
+      `LLM (${llmClient.provider}/${llmClient.model}) falhou ou retornou formato incompatível. Ativando fallback determinístico.`,
+      err,
+    );
     return fallbackGenerator();
   }
 }
+
+/** @deprecated Use callLlmJsonGuard — mantido como alias durante a migração. */
+const callAnthropicJsonGuard = callLlmJsonGuard;
 
 /**
  * Carrega ou inicializa o perfil do aluno para preenchimento de variáveis.

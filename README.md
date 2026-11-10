@@ -11,7 +11,7 @@
 | **Runtime & Monorepo** | **Node.js 26 LTS** + **pnpm 12 workspaces** (`apps/web`, `apps/api`, `packages/shared`) |
 | **Front-end (`apps/web`)** | **React 19 + TypeScript 7 + Vite 8 + Tailwind CSS 4 + Recharts 3 + React Router 8 + TanStack Query 5** |
 | **Back-end (`apps/api`)** | **Express 5 + TypeScript + Prisma 7 + SQLite** (`@prisma/adapter-better-sqlite3`, pronto para PostgreSQL) |
-| **IA & Prompts** | **`@anthropic-ai/sdk`** (`/v1/messages`) + validação **Zod 4** (`jsonGuard`) + **Modo Mock Determinístico** quando sem `ANTHROPIC_API_KEY` |
+| **IA & Prompts** | **Groq / Gemini / Anthropic** (via `openai` + `@anthropic-ai/sdk`) + validação **Zod 4** (`jsonGuard`) + **Modo Mock** sem chave |
 | **Autenticação & Segurança** | **Argon2id** (`@node-rs/argon2`), **JWT em cookie `httpOnly` / `SameSite=Strict`**, proteção CSRF por `Origin`, `helmet`, `express-rate-limit` e políticas de supply-chain no pnpm (`minimumReleaseAge` + `allowBuilds`) |
 | **Áudio & Voz** | **Web Speech API** (`SpeechRecognition` STT + `speechSynthesis` TTS) + **`MediaRecorder`** (gravação comparativa com player lado a lado) |
 | **Qualidade & Testes** | **Vitest 5 + Testing Library + Supertest** (suíte automatizada no back-end e no front-end) |
@@ -107,9 +107,11 @@ pnpm db:seed
 > - **E-mail:** `demo@fluencialab.dev`
 > - **Senha:** `demo12345`
 
-> **Sobre a chave da Anthropic (`ANTHROPIC_API_KEY`):**
-> - Se você definir `ANTHROPIC_API_KEY="sk-ant-..."` em `apps/api/.env`, os 8 professores chamarão a API `/v1/messages` do Claude em tempo real.
-> - Se deixar `ANTHROPIC_API_KEY=""` vazio, o servidor funciona automaticamente em **Modo Mock Determinístico**, gerando planos, diálogos, correções e avaliações contextualizados com o perfil do aluno sem custo.
+> **Sobre a IA dos professores (`AI_PROVIDER` / `AI_API_KEY`):**
+> - `AI_PROVIDER=groq` + chave Groq → free tier rápido ([console.groq.com](https://console.groq.com)).
+> - `AI_PROVIDER=gemini` + chave Google AI Studio → free tier Gemini.
+> - `AI_PROVIDER=anthropic` + chave Anthropic → Claude (pago).
+> - Sem provedor/chave → **Modo Mock Determinístico** (sem custo).
 
 ### 3. Iniciar o Ambiente de Desenvolvimento
 

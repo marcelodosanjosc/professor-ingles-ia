@@ -15,6 +15,7 @@ import {
   FastForward,
   Headphones,
   RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import {
   LISTENING_CONTENTS,
@@ -264,6 +265,8 @@ export function ListeningPage() {
   const [hasChecked, setHasChecked] = useState(false);
   const [checkScore, setCheckScore] = useState<number | null>(null);
   const [isCheckingDictation, setIsCheckingDictation] = useState(false);
+  const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
+  const [dictationError, setDictationError] = useState<string | null>(null);
 
   // Velocidade do player de nível
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
@@ -278,12 +281,24 @@ export function ListeningPage() {
   });
 
   // Hooks de fala e áudio
-  const { speak, stopSpeaking, isSpeaking, startListening, stopListening, isListening, transcript } =
-    useSpeech({
-      defaultLang: 'en-US',
-      onExposureSec: addExposureSec,
-      onSpeakingSec: addSpeakingSec,
-    });
+  const {
+    speak,
+    stopSpeaking,
+    isSpeaking,
+    startListening,
+    stopListening,
+    isListening,
+    transcript,
+    sttError,
+    supported: isSttSupported,
+  } = useSpeech({
+    defaultLang: 'en-US',
+    onExposureSec: addExposureSec,
+    onSpeakingSec: addSpeakingSec,
+    onTranscript: (spoken) => {
+      setUserTranscript(spoken);
+    },
+  });
 
   const {
     startRecording,
@@ -327,10 +342,77 @@ export function ListeningPage() {
 
   // Atualiza transcrição se vier de reconhecimento de voz
   useEffect(() => {
-    if (transcript && isListening) {
+    if (transcript) {
       setUserTranscript(transcript);
     }
-  }, [transcript, isListening]);
+  }, [transcript]);
+
+  const isDictating = isRecording || isListening;
+
+  const handleToggleDictation = async () => {
+    setDictationError(null);
+
+    // Se já estiver gravando/ouvindo, finaliza e transcreve via Whisper
+    if (isDictating) {
+      stopListening();
+      const recordedBlob = await stopRecording();
+
+      if (recordedBlob && recordedBlob.size > 0) {
+        setIsTranscribingAudio(true);
+        try {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const res = (reader.result as string) || '';
+              const commaIdx = res.indexOf(',');
+              resolve(commaIdx !== -1 ? res.slice(commaIdx + 1) : res);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(recordedBlob);
+          });
+
+          const res = await apiFetch<{ text: string }>('/api/transcribe', {
+            method: 'POST',
+            body: JSON.stringify({
+              audioBase64: base64,
+              mimeType: recordedBlob.type || 'audio/webm',
+              lang: 'en',
+            }),
+          });
+
+          const cleanText = res?.text?.trim()?.replace(/^[.\s,!?…]+$/, '');
+          if (cleanText) {
+            setUserTranscript(cleanText);
+          } else {
+            setDictationError(
+              'Nenhuma fala foi detectada no áudio. Fale claramente próximo ao microfone e clique em Concluir Ditado.',
+            );
+          }
+        } catch (err) {
+          console.warn('Falha na transcrição de áudio com Whisper:', err);
+        } finally {
+          setIsTranscribingAudio(false);
+        }
+      }
+      return;
+    }
+
+    // Inicia gravação real do microfone (compatível com 100% dos navegadores)
+    try {
+      await startRecording();
+    } catch (err: any) {
+      console.warn('Erro ao acessar microfone:', err);
+      setDictationError('Permissão do microfone negada. Permita o microfone no navegador.');
+      return;
+    }
+
+    // Tenta também iniciar SpeechRecognition nativo para digitação em tempo real
+    try {
+      startListening('en-US');
+    } catch {
+      // Ignora
+    }
+  };
 
   const currentLevel =
     (sessionData.levels[currentLevelIndex] ??
@@ -611,41 +693,76 @@ export function ListeningPage() {
                   value={userTranscript}
                   onChange={(e) => setUserTranscript(e.target.value)}
                   placeholder="Ex: I'm gonna grab a cup of coffee..."
-                  className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-4 text-slate-100 placeholder-slate-500 text-base focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
+                  className={`w-full bg-slate-950 border rounded-xl p-4 text-slate-100 placeholder-slate-500 text-base focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    isDictating
+                      ? 'border-rose-500/80 ring-2 ring-rose-500/20'
+                      : 'border-slate-700/80 focus:ring-amber-400'
+                  }`}
                 />
 
                 <div className="absolute right-3 bottom-3 flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (isListening) {
-                        stopListening();
-                      } else {
-                        startListening('en-US');
-                      }
-                    }}
-                    title={isListening ? 'Parar gravação de voz' : 'Ditar por voz'}
-                    aria-label={isListening ? 'Parar gravação de voz' : 'Ditar por voz'}
+                    onClick={() => void handleToggleDictation()}
+                    disabled={isTranscribingAudio}
+                    title={isDictating ? 'Parar gravação de voz e transcrever' : 'Ditar por voz'}
+                    aria-label={isDictating ? 'Parar gravação de voz e transcrever' : 'Ditar por voz'}
                     className={`p-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                      isListening
-                        ? 'bg-rose-600 text-white animate-pulse'
+                      isDictating
+                        ? 'bg-rose-600 text-white animate-pulse shadow-md shadow-rose-950'
+                        : isTranscribingAudio
+                        ? 'bg-amber-600 text-white cursor-wait'
                         : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700'
                     }`}
                   >
-                    {isListening ? (
+                    {isTranscribingAudio ? (
                       <>
-                        <MicOff className="w-4 h-4" />
-                        <span>Ouvindo...</span>
+                        <RefreshCw className="w-4 h-4 text-white animate-spin" />
+                        <span>Transcrevendo...</span>
+                      </>
+                    ) : isDictating ? (
+                      <>
+                        <MicOff className="w-4 h-4 text-white" />
+                        <span>Concluir Ditado</span>
                       </>
                     ) : (
                       <>
-                        <Mic className="w-4 h-4" />
+                        <Mic className="w-4 h-4 text-amber-400" />
                         <span>Ditar por voz</span>
                       </>
                     )}
                   </button>
                 </div>
               </div>
+
+              {/* Status do reconhecimento de voz */}
+              {isDictating && (
+                <div className="flex items-center gap-2 text-xs text-rose-400 font-medium animate-pulse px-1">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                  <span>Microfone gravando. Fale a frase em inglês e clique em "Concluir Ditado" quando terminar...</span>
+                </div>
+              )}
+
+              {isTranscribingAudio && (
+                <div className="flex items-center gap-2 text-xs text-amber-400 font-medium animate-pulse px-1">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Transcrevendo com Whisper IA de alta precisão...</span>
+                </div>
+              )}
+
+              {(dictationError || sttError) && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{dictationError || sttError}</span>
+                </div>
+              )}
+
+              {!isSttSupported && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>Dica: o recurso "Ditar por voz" requer um navegador compatível com a Web Speech API (como Google Chrome ou Microsoft Edge).</span>
+                </div>
+              )}
 
               {/* Botão de Verificação */}
               <div className="flex items-center justify-between pt-1">

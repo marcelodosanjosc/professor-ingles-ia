@@ -8,3 +8,5 @@ apps/api/src/generated/
 coverage/
 .DS_Store
 *.log
+.playwright-mcp
+screenshot-*.png

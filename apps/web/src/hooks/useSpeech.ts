@@ -46,10 +46,11 @@ export interface UseSpeechOptions {
   defaultLang?: string;
   onExposureSec?: (sec: number) => void;
   onSpeakingSec?: (sec: number) => void;
+  onTranscript?: (transcript: string) => void;
 }
 
 export function useSpeech(options: UseSpeechOptions = {}) {
-  const { defaultLang = 'en-US', onExposureSec, onSpeakingSec } = options;
+  const { defaultLang = 'en-US', onExposureSec, onSpeakingSec, onTranscript } = options;
 
   // Estados TTS
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -60,6 +61,7 @@ export function useSpeech(options: UseSpeechOptions = {}) {
   // Estados STT
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [sttError, setSttError] = useState<string | null>(null);
   const [speakingSec, setSpeakingSec] = useState(0);
   const sttIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -164,6 +166,8 @@ export function useSpeech(options: UseSpeechOptions = {}) {
   const startListening = useCallback(
     (lang = defaultLang) => {
       stopListening();
+      setTranscript('');
+      setSttError(null);
 
       // Inicia timer de contagem de fala ativa
       sttIntervalRef.current = setInterval(() => {
@@ -186,27 +190,62 @@ export function useSpeech(options: UseSpeechOptions = {}) {
 
             recognition.onstart = () => {
               setIsListening(true);
+              setSttError(null);
             };
 
             recognition.onresult = (event: SpeechRecognitionEventLike) => {
-              let currentTranscript = '';
+              let finalTranscript = '';
+              let interimTranscript = '';
               for (let i = 0; i < event.results.length; i++) {
                 const item = event.results[i]?.[0];
-                if (item?.transcript) {
-                  currentTranscript += item.transcript;
+                const text = item?.transcript?.trim();
+                if (!text) continue;
+
+                if (event.results[i]?.isFinal) {
+                  finalTranscript += (finalTranscript ? ' ' : '') + text;
+                } else {
+                  interimTranscript += (interimTranscript ? ' ' : '') + text;
                 }
               }
-              if (currentTranscript) {
-                setTranscript(currentTranscript);
+
+              const combined = (
+                finalTranscript +
+                (interimTranscript ? (finalTranscript ? ' ' : '') + interimTranscript : '')
+              ).trim();
+
+              if (combined) {
+                setTranscript(combined);
+                onTranscript?.(combined);
               }
             };
 
-            recognition.onerror = () => {
+            recognition.onerror = (event: any) => {
+              const err = event?.error || 'unknown';
+              if (err === 'no-speech') {
+                // Silêncio temporário ou pausa de fala — não aborta
+                return;
+              }
+              if (err === 'not-allowed' || err === 'service-not-allowed') {
+                setSttError('Permissão do microfone negada. Permita o microfone no navegador.');
+                stopListening();
+                return;
+              }
+              if (err === 'audio-capture') {
+                setSttError('Nenhum microfone encontrado.');
+                stopListening();
+                return;
+              }
+              if (err === 'network') {
+                setSttError('Falha de rede no serviço de reconhecimento de voz.');
+                stopListening();
+                return;
+              }
+              console.warn('SpeechRecognition error:', err);
               stopListening();
             };
 
             recognition.onend = () => {
-              stopListening();
+              setIsListening(false);
             };
 
             recognitionRef.current = recognition;
@@ -222,12 +261,13 @@ export function useSpeech(options: UseSpeechOptions = {}) {
       // Em ambiente de simulação/teste sem SpeechRecognition nativo
       setIsListening(true);
     },
-    [defaultLang, isSttSupported, onSpeakingSec, stopListening]
+    [defaultLang, isSttSupported, onSpeakingSec, onTranscript, stopListening]
   );
 
   const resetCounters = useCallback(() => {
     setSpeakingSec(0);
     setExposureSec(0);
+    setSttError(null);
   }, []);
 
   // Limpeza ao desmontar
@@ -253,6 +293,7 @@ export function useSpeech(options: UseSpeechOptions = {}) {
     setTranscript,
     isListening,
     speakingSec,
+    sttError,
     supported: isSttSupported,
 
     // Utilidades
