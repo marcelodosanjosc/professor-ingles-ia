@@ -1,12 +1,47 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { GraduationCap, Mail, Lock, AlertCircle, Sparkles } from 'lucide-react';
+import {
+  GraduationCap,
+  Mail,
+  Lock,
+  AlertCircle,
+  Sparkles,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { loginSchema } from '@fluencialab/shared';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiRequestError } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent } from '../../components/ui/Card';
+
+function PasswordVisibilityToggle({
+  visible,
+  onToggle,
+  labelShow,
+  labelHide,
+}: {
+  visible: boolean;
+  onToggle: () => void;
+  labelShow: string;
+  labelHide: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={visible ? labelHide : labelShow}
+      className="p-0.5 rounded-md text-slate-400 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+    >
+      {visible ? (
+        <EyeOff className="w-4 h-4" aria-hidden="true" />
+      ) : (
+        <Eye className="w-4 h-4" aria-hidden="true" />
+      )}
+    </button>
+  );
+}
 
 export function Login() {
   const { login } = useAuth();
@@ -15,6 +50,7 @@ export function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,13 +154,21 @@ export function Login() {
               <Input
                 label="Senha"
                 id="login-password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 error={errors.password}
                 leftIcon={<Lock className="w-4 h-4" />}
+                rightIcon={
+                  <PasswordVisibilityToggle
+                    visible={showPassword}
+                    onToggle={() => setShowPassword((v) => !v)}
+                    labelShow="Mostrar senha"
+                    labelHide="Ocultar senha"
+                  />
+                }
                 required
               />
 
