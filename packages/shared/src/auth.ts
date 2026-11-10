@@ -10,6 +10,17 @@ export const registerSchema = z.object({
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
+/** Schema do formulário de cadastro (front). A API continua usando `registerSchema`. */
+export const registerFormSchema = registerSchema
+  .extend({
+    confirmPassword: z.string().min(1, 'Confirme a senha'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  });
+export type RegisterFormInput = z.infer<typeof registerFormSchema>;
+
 export const loginSchema = z.object({
   email: z.email('E-mail inválido').trim().toLowerCase(),
   password: z.string().min(1, 'Informe a senha').max(128),

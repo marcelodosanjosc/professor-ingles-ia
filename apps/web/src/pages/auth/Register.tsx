@@ -1,12 +1,55 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { GraduationCap, User, Mail, Lock, AlertCircle, Sparkles } from 'lucide-react';
-import { registerSchema } from '@fluencialab/shared';
+import {
+  GraduationCap,
+  User,
+  Mail,
+  Lock,
+  AlertCircle,
+  Sparkles,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
+import { registerFormSchema } from '@fluencialab/shared';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiRequestError } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent } from '../../components/ui/Card';
+
+type FieldErrors = {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+};
+
+function PasswordVisibilityToggle({
+  visible,
+  onToggle,
+  labelShow,
+  labelHide,
+}: {
+  visible: boolean;
+  onToggle: () => void;
+  labelShow: string;
+  labelHide: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={visible ? labelHide : labelShow}
+      className="p-0.5 rounded-md text-slate-400 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+    >
+      {visible ? (
+        <EyeOff className="w-4 h-4" aria-hidden="true" />
+      ) : (
+        <Eye className="w-4 h-4" aria-hidden="true" />
+      )}
+    </button>
+  );
+}
 
 export function Register() {
   const { register: registerUser } = useAuth();
@@ -15,20 +58,50 @@ export function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const passwordsMatch = password === confirmPassword;
+  const confirmMismatchError =
+    confirmPassword.length > 0 && !passwordsMatch
+      ? 'As senhas não coincidem'
+      : undefined;
+  const confirmPasswordError = confirmMismatchError ?? errors.confirmPassword;
+  const isSubmitDisabled = !passwordsMatch || isSubmitting;
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (errors.password) {
+      setErrors((prev) => ({ ...prev, password: undefined }));
+    }
+  };
+
+  const handleConfirmPasswordChange = (value: string) => {
+    setConfirmPassword(value);
+    if (errors.confirmPassword) {
+      setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+    }
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setApiError(null);
     setErrors({});
 
-    const validation = registerSchema.safeParse({ name, email, password });
+    const validation = registerFormSchema.safeParse({
+      name,
+      email,
+      password,
+      confirmPassword,
+    });
     if (!validation.success) {
-      const fieldErrors: { name?: string; email?: string; password?: string } = {};
+      const fieldErrors: FieldErrors = {};
       for (const issue of validation.error.issues) {
-        const field = issue.path[0] as 'name' | 'email' | 'password';
+        const field = issue.path[0] as keyof FieldErrors;
         if (field && !fieldErrors[field]) {
           fieldErrors[field] = issue.message;
         }
@@ -39,8 +112,13 @@ export function Register() {
 
     try {
       setIsSubmitting(true);
-      await registerUser(validation.data);
-      // Novos usuários ainda não possuem perfil, redireciona para onboarding
+      const { name: validName, email: validEmail, password: validPassword } =
+        validation.data;
+      await registerUser({
+        name: validName,
+        email: validEmail,
+        password: validPassword,
+      });
       navigate('/onboarding', { replace: true });
     } catch (err) {
       if (err instanceof ApiRequestError) {
@@ -124,14 +202,43 @@ export function Register() {
               <Input
                 label="Senha"
                 id="register-password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="Mínimo 8 caracteres"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handlePasswordChange(e.target.value)}
                 error={errors.password}
                 hint="Use pelo menos 8 caracteres para sua segurança"
                 leftIcon={<Lock className="w-4 h-4" />}
+                rightIcon={
+                  <PasswordVisibilityToggle
+                    visible={showPassword}
+                    onToggle={() => setShowPassword((v) => !v)}
+                    labelShow="Mostrar senha"
+                    labelHide="Ocultar senha"
+                  />
+                }
+                required
+              />
+
+              <Input
+                label="Confirmar senha"
+                id="register-confirm-password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                placeholder="Repita a senha"
+                value={confirmPassword}
+                onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                error={confirmPasswordError}
+                leftIcon={<Lock className="w-4 h-4" />}
+                rightIcon={
+                  <PasswordVisibilityToggle
+                    visible={showConfirmPassword}
+                    onToggle={() => setShowConfirmPassword((v) => !v)}
+                    labelShow="Mostrar confirmação de senha"
+                    labelHide="Ocultar confirmação de senha"
+                  />
+                }
                 required
               />
 
@@ -140,6 +247,7 @@ export function Register() {
                 variant="primary"
                 size="lg"
                 loading={isSubmitting}
+                disabled={isSubmitDisabled}
                 className="w-full mt-2"
               >
                 Criar minha conta
